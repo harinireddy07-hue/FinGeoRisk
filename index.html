@@ -98,6 +98,19 @@ h1,h2,h3,h4{font-family:"Space Grotesk",sans-serif;margin:0;font-weight:600;lett
 .avatar-btn svg{width:20px;height:20px;}
 .avatar-btn:hover{border-color:var(--cyan);color:var(--cyan);}
 
+/* ---------- Map fullscreen toggle ---------- */
+.fs-btn{
+  width:26px;height:26px;border-radius:7px;flex:none;cursor:pointer;
+  display:grid;place-items:center;background:var(--surface);
+  border:1px solid var(--line);color:var(--muted);transition:.15s;
+}
+.fs-btn:hover{color:var(--cyan);border-color:var(--cyan-dim);background:var(--surface-2);}
+.fs-btn svg{width:14px;height:14px;}
+#map-card:fullscreen{background:var(--bg);display:flex;flex-direction:column;}
+#map-card:fullscreen #map{flex:1;height:auto;}
+#map-card:-webkit-full-screen{background:var(--bg);display:flex;flex-direction:column;}
+#map-card:-webkit-full-screen #map{flex:1;height:auto;}
+
 .dropdown{
   position:absolute;top:calc(100% + 10px);right:0;width:300px;
   background:linear-gradient(180deg,var(--surface),var(--surface-2));
@@ -589,10 +602,17 @@ h1,h2,h3,h4{font-family:"Space Grotesk",sans-serif;margin:0;font-weight:600;lett
     </div>
 
     <div class="grid-top">
-      <section class="card flush">
+      <section class="card flush" id="map-card">
         <div class="chead">
           <h3><span class="ic">◎</span> Spatial Target Earth Viewer</h3>
-          <span class="eyebrow">AERIAL IMAGERY GRID</span>
+          <div style="display:flex;align-items:center;gap:10px;">
+            <span class="eyebrow">AERIAL IMAGERY GRID</span>
+            <button class="fs-btn" id="map-fullscreen-btn" title="Toggle fullscreen" aria-label="Toggle fullscreen">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M8 3H5a2 2 0 0 0-2 2v3M16 3h3a2 2 0 0 1 2 2v3M8 21H5a2 2 0 0 1-2-2v-3M16 21h3a2 2 0 0 0 2-2v-3"/>
+              </svg>
+            </button>
+          </div>
         </div>
         <div id="map"></div>
         <div class="map-foot">Click anywhere on the satellite landscape to query hyper-local insurance risk vectors.</div>
@@ -737,8 +757,33 @@ function setupEvents(){
   $('chat-box').addEventListener('keydown', e=>{ if(e.key==='Enter') sendChat(); });
 
   setupTopbarMenus();
+  setupMapFullscreen();
 }
 /* ---------- Settings / Profile dropdowns + background theme picker ---------- */
+/* ---------- Map fullscreen toggle ---------- */
+function setupMapFullscreen(){
+  const card = $('map-card');
+  const btn = $('map-fullscreen-btn');
+  const enterIcon = '<path d="M8 3H5a2 2 0 0 0-2 2v3M16 3h3a2 2 0 0 1 2 2v3M8 21H5a2 2 0 0 1-2-2v-3M16 21h3a2 2 0 0 0 2-2v-3"/>';
+  const exitIcon = '<path d="M9 3v3a2 2 0 0 1-2 2H4M15 3v3a2 2 0 0 0 2 2h3M9 21v-3a2 2 0 0 0-2-2H4M15 21v-3a2 2 0 0 1 2-2h3"/>';
+
+  btn.onclick = () => {
+    if (!document.fullscreenElement) {
+      (card.requestFullscreen || card.webkitRequestFullscreen)?.call(card);
+    } else {
+      (document.exitFullscreen || document.webkitExitFullscreen)?.call(document);
+    }
+  };
+
+  const onFsChange = () => {
+    const isFs = !!(document.fullscreenElement || document.webkitFullscreenElement);
+    btn.querySelector('svg').innerHTML = isFs ? exitIcon : enterIcon;
+    setTimeout(() => { if (map) map.resize(); }, 150);
+  };
+  document.addEventListener('fullscreenchange', onFsChange);
+  document.addEventListener('webkitfullscreenchange', onFsChange);
+}
+
 function setupTopbarMenus(){
   const settingsBtn = $('settings-btn'), settingsDd = $('settings-dd');
   const profileBtn = $('profile-btn'), profileDd = $('profile-dd');
