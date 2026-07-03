@@ -1,0 +1,12 @@
+# Python environment
+venv/
+
+# Bytecode cache
+__pycache__/
+*.py[cod]
+
+# Environment variables
+.env
+
+# Editor and OS files
+.DS_Store

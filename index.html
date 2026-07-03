@@ -1,0 +1,1425 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>FinGeoRisk — Actuarial Geospatial Asset Terminal</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+<script src="https://cdn.plot.ly/plotly-2.27.0.min.js" charset="utf-8"></script>
+<script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
+<link href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css" rel="stylesheet" />
+
+<style>
+:root{
+  --bg:#06090e;
+  --bg-grad:#090d14;
+  --surface:#0e141f;
+  --surface-2:#131b29;
+  --raised:#192437;
+  --line:#202e44;
+  --line-soft:#172233;
+  --text:#e2ebf5;
+  --muted:#8596b0;
+  --faint:#53647c;
+  --cyan:#2dd4bf;
+  --cyan-dim:#14534d;
+  --emerald:#34d399;
+  --amber:#fbbf24;
+  --orange:#fb923c;
+  --red:#ef4444;
+  --shadow:0 12px 48px rgba(0,0,0,.6);
+  --r:14px;
+}
+
+*{box-sizing:border-box;}
+html,body{margin:0;height:100%;background-color:var(--bg);}
+body{
+  background: linear-gradient(180deg, var(--bg-grad), var(--bg));
+  color:var(--text);
+  font-family:"Inter",system-ui,sans-serif;
+  font-size:14px;
+  line-height:1.45;
+  -webkit-font-smoothing:antialiased;
+}
+h1,h2,h3,h4{font-family:"Space Grotesk",sans-serif;margin:0;font-weight:600;letter-spacing:-.01em;}
+.mono{font-family:"JetBrains Mono",monospace;}
+.eyebrow{
+  font-family:"JetBrains Mono",monospace;
+  font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--faint);
+}
+
+.shell{display:grid;grid-template-columns:320px 1fr;min-height:100vh;}
+
+/* ---------- Topbar ---------- */
+.topbar{
+  grid-column:1/-1;
+  display:flex;align-items:center;gap:24px;
+  padding:14px 26px;
+  border-bottom:1px solid var(--line);
+  background:rgba(14,20,31,.75);
+  backdrop-filter:blur(10px);
+  position:sticky;top:0;z-index:50;
+}
+.brand{display:flex;align-items:center;gap:13px;}
+.brand .glyph{
+  width:38px;height:38px;border-radius:10px;flex:none;
+  background:radial-gradient(circle at 30% 25%, #115e59, #042f2e);
+  border:1px solid var(--cyan);display:grid;place-items:center;
+}
+.brand .name{font-size:18px;font-family:"Space Grotesk";font-weight:700;letter-spacing:-.02em;}
+.brand .name b{color:var(--cyan);font-weight:700;}
+.brand .sub{font-size:9px;color:var(--muted);font-family:"JetBrains Mono";letter-spacing:.12em;}
+
+.topbar-spacer{flex:1;}
+.tele{display:flex;gap:22px;align-items:center;}
+.tele .cell{display:flex;flex-direction:column;line-height:1.25;}
+.tele .cell .k{font-size:9px;letter-spacing:.16em;text-transform:uppercase;color:var(--faint);font-family:"JetBrains Mono";}
+.tele .cell .v{font-size:13px;font-family:"JetBrains Mono";font-weight:500;color:var(--text);}
+.live{display:flex;align-items:center;gap:8px;padding:6px 12px;border:1px solid var(--cyan-dim);border-radius:100px;background:rgba(45,212,191,.07);}
+.live .dot{width:8px;height:8px;border-radius:50%;background:var(--cyan);}
+
+/* ---------- Topbar Icon Buttons (Settings / Profile) ---------- */
+.topbar-icons{display:flex;align-items:center;gap:10px;position:relative;}
+.icon-btn{
+  width:38px;height:38px;border-radius:10px;flex:none;cursor:pointer;
+  display:grid;place-items:center;background:var(--surface);
+  border:1px solid var(--line);color:var(--muted);transition:.15s;
+}
+.icon-btn:hover{color:var(--cyan);border-color:var(--cyan-dim);background:var(--surface-2);}
+.icon-btn.active{color:var(--cyan);border-color:var(--cyan);background:rgba(45,212,191,.08);}
+.icon-btn svg{width:18px;height:18px;}
+.avatar-btn{
+  width:38px;height:38px;border-radius:10px;flex:none;cursor:pointer;
+  display:grid;place-items:center;border:1px solid var(--line);
+  background:var(--surface);color:#8fa3c4;transition:.15s;
+}
+.avatar-btn svg{width:20px;height:20px;}
+.avatar-btn:hover{border-color:var(--cyan);color:var(--cyan);}
+
+.dropdown{
+  position:absolute;top:calc(100% + 10px);right:0;width:300px;
+  background:linear-gradient(180deg,var(--surface),var(--surface-2));
+  border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);
+  z-index:100;overflow:hidden;display:none;
+}
+.dropdown.open{display:block;}
+.dropdown .dd-head{padding:14px 16px;border-bottom:1px solid var(--line-soft);}
+.dropdown .dd-head .t{font-family:"Space Grotesk";font-weight:600;font-size:13px;}
+.dropdown .dd-head .s{font-size:11px;color:var(--faint);font-family:"JetBrains Mono";margin-top:2px;}
+.dropdown .dd-body{padding:10px;display:flex;flex-direction:column;gap:4px;}
+.dropdown .dd-section{padding:10px 10px 4px;}
+.dd-item{
+  display:flex;align-items:center;gap:10px;padding:10px 10px;border-radius:9px;
+  cursor:pointer;font-size:12.5px;color:var(--text);transition:.12s;background:none;border:none;
+  width:100%;text-align:left;font-family:"Inter",sans-serif;
+}
+.dd-item:hover{background:var(--raised);color:var(--cyan);}
+.dd-item .em{width:18px;text-align:center;}
+.dd-divider{height:1px;background:var(--line-soft);margin:6px 0;}
+.dd-row{display:flex;align-items:center;justify-content:space-between;padding:9px 10px;font-size:12.5px;}
+.dd-row .lbl{color:var(--text);}
+.toggle{position:relative;width:36px;height:20px;flex:none;border-radius:100px;background:var(--raised);border:1px solid var(--line);cursor:pointer;transition:.15s;}
+.toggle::after{content:'';position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:50%;background:var(--faint);transition:.15s;}
+.toggle.on{background:rgba(45,212,191,.18);border-color:var(--cyan-dim);}
+.toggle.on::after{left:18px;background:var(--cyan);}
+
+/* theme picker (background colour) */
+.theme-picker{padding:12px 14px 14px;}
+.theme-picker input[type=color]{
+  width:100%;height:38px;border-radius:9px;border:1px solid var(--line);
+  background:var(--surface);cursor:pointer;padding:2px;margin-bottom:10px;
+}
+.theme-swatches{display:flex;gap:10px;}
+.swatch{
+  width:30px;height:30px;border-radius:50%;cursor:pointer;flex:none;
+  border:2px solid var(--line-soft);transition:.12s;position:relative;
+}
+.swatch:hover{transform:scale(1.08);}
+.swatch.active{border-color:var(--cyan);box-shadow:0 0 0 2px rgba(45,212,191,.25);}
+
+/* ---------- Functional modal (opened by dropdown items) ---------- */
+.modal-overlay{
+  position:fixed;inset:0;background:rgba(4,6,10,.66);backdrop-filter:blur(4px);
+  z-index:300;display:none;align-items:center;justify-content:center;padding:20px;
+}
+.modal-overlay.open{display:flex;}
+.modal-box{
+  width:100%;max-width:420px;max-height:82vh;overflow-y:auto;
+  background:linear-gradient(180deg,var(--surface),var(--surface-2));
+  border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow);
+}
+.modal-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:18px 20px;border-bottom:1px solid var(--line-soft);}
+.modal-title{font-family:"Space Grotesk";font-weight:700;font-size:16px;color:#fff;}
+.modal-sub{font-size:11px;color:var(--faint);font-family:"JetBrains Mono";letter-spacing:.1em;margin-top:3px;}
+.modal-close{background:var(--surface);border:1px solid var(--line);color:var(--muted);border-radius:8px;width:28px;height:28px;cursor:pointer;flex:none;}
+.modal-close:hover{color:var(--cyan);border-color:var(--cyan-dim);}
+.modal-body{padding:18px 20px 20px;font-size:13px;color:var(--text);}
+.modal-body .field{display:flex;flex-direction:column;gap:6px;margin-bottom:14px;}
+.modal-body .field label{font-size:10.5px;color:var(--faint);font-family:"JetBrains Mono";letter-spacing:.1em;text-transform:uppercase;}
+.modal-body input,.modal-body select{
+  background:var(--surface);border:1px solid var(--line);border-radius:8px;
+  padding:9px 11px;color:var(--text);font-size:13px;outline:none;
+}
+.modal-body input:focus,.modal-body select:focus{border-color:var(--cyan);}
+.modal-row{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--line-soft);font-size:12.5px;}
+.modal-row:last-child{border-bottom:none;}
+.modal-actions{display:flex;gap:10px;margin-top:16px;}
+.btn-ghost{background:var(--surface);border:1px solid var(--line);color:var(--text);cursor:pointer;border-radius:8px;font-family:"Space Grotesk";font-weight:600;padding:10px 16px;flex:1;}
+.btn-ghost:hover{border-color:var(--line);background:var(--raised);}
+.btn-danger{background:rgba(239,68,68,.12);border:1px solid var(--red);color:var(--red);cursor:pointer;border-radius:8px;font-family:"Space Grotesk";font-weight:600;padding:10px 16px;flex:1;}
+.btn-danger:hover{background:rgba(239,68,68,.2);}
+.plan-card{border:1px solid var(--cyan-dim);border-radius:12px;padding:14px;background:rgba(45,212,191,.06);margin-bottom:14px;}
+.plan-card .tier{font-family:"Space Grotesk";font-weight:700;color:var(--cyan);font-size:15px;}
+.ws-item{display:flex;align-items:center;gap:10px;padding:10px;border-radius:9px;cursor:pointer;border:1px solid transparent;}
+.ws-item:hover{background:var(--raised);}
+.ws-item.active{border-color:var(--cyan-dim);background:rgba(45,212,191,.06);}
+.ws-item .wdot{width:8px;height:8px;border-radius:50%;background:var(--faint);}
+.ws-item.active .wdot{background:var(--cyan);}
+
+/* ---------- Toast ---------- */
+.toast{
+  position:fixed;bottom:22px;right:22px;z-index:400;
+  background:var(--raised);border:1px solid var(--line);border-radius:10px;
+  padding:12px 16px;font-size:12.5px;color:var(--text);box-shadow:var(--shadow);
+  display:flex;align-items:center;gap:9px;transform:translateY(12px);opacity:0;
+  transition:transform .2s ease, opacity .2s ease;pointer-events:none;
+}
+.toast.show{transform:translateY(0);opacity:1;}
+
+/* ---------- Sidebar ---------- */
+.sidebar{
+  border-right:1px solid var(--line);
+  padding:24px 20px;
+  background:rgba(14,20,31,.3);
+  display:flex;
+  flex-direction:column;
+  gap:28px;
+}
+.sidebar .group{display:flex;flex-direction:column;}
+.sidebar .group > .eyebrow{margin-bottom:12px;}
+
+/* Search Box Custom Engine Styling */
+.search-container{position:relative;}
+.search-container input{
+  width:100%;background:var(--surface);border:1px solid var(--line);border-radius:10px;
+  padding:12px 14px;color:var(--text);font-size:13px;outline:none;transition:all 0.15s;
+}
+.search-container input:focus{border-color:var(--cyan);box-shadow:0 0 0 2px rgba(45,212,191,0.15);}
+.search-btn{
+  margin-top:8px;width:100%;padding:10px;font-family:"Space Grotesk";
+  font-weight:600;border-radius:8px;border:none;background:var(--raised);
+  color:var(--text);cursor:pointer;transition:0.15s;
+}
+.search-btn:hover{background:var(--line);color:var(--cyan);}
+
+.preset-list{display:flex;flex-direction:column;gap:8px;margin-top:10px;}
+.preset-item{
+  background:var(--surface);border:1px solid var(--line-soft);padding:10px 12px;
+  border-radius:8px;cursor:pointer;text-align:left;color:var(--muted);font-size:12.5px;
+  transition:all 0.15s;
+}
+.preset-item:hover{border-color:var(--line);color:var(--text);background:var(--surface-2);}
+
+.apikey input{
+  width:100%;background:var(--surface);border:1px solid var(--line-soft);border-radius:9px;
+  padding:10px 12px;color:var(--text);font-family:"JetBrains Mono";font-size:11px;outline:none;
+}
+
+/* ---------- Sidebar: Hotspot Quick-Jump / Recent Searches ---------- */
+.side-list{display:flex;flex-direction:column;gap:6px;margin-top:10px;max-height:230px;overflow-y:auto;}
+.side-list::-webkit-scrollbar{width:5px;}
+.side-list::-webkit-scrollbar-thumb{background:var(--line);border-radius:3px;}
+.side-item{
+  display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:8px;
+  background:var(--surface);border:1px solid var(--line-soft);cursor:pointer;transition:.15s;
+}
+.side-item:hover{border-color:var(--line);background:var(--surface-2);}
+.side-item .dot{width:9px;height:9px;border-radius:50%;flex:none;box-shadow:0 0 6px currentColor;}
+.side-item .info{min-width:0;flex:1;}
+.side-item .name{font-size:12px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.side-item .meta{font-size:9.5px;color:var(--faint);font-family:"JetBrains Mono";letter-spacing:.04em;margin-top:1px;}
+.side-empty{font-size:11.5px;color:var(--faint);padding:8px 2px;font-style:italic;}
+.side-item .idx{font-family:"JetBrains Mono";font-size:10px;color:var(--faint);flex:none;}
+
+/* ---------- Main ---------- */
+.main{padding:24px 26px 48px;min-width:0;display:flex;flex-direction:column;gap:20px;}
+.page-head{display:flex;align-items:flex-end;justify-content:space-between;gap:20px;flex-wrap:wrap;}
+.page-head h1{font-size:24px;color:#fff;}
+.page-head p{color:var(--muted);font-size:13px;margin-top:5px;}
+
+.grid-top{display:grid;grid-template-columns:1.5fr 1fr;gap:20px;}
+.grid-bottom{display:grid;grid-template-columns:repeat(4,1fr);gap:20px;}
+
+.card{
+  background:linear-gradient(180deg,var(--surface),var(--surface-2));
+  border:1px solid var(--line);border-radius:18px;
+  box-shadow:var(--shadow);overflow:hidden;display:flex;flex-direction:column;
+  position:relative;transition:transform .18s ease, box-shadow .18s ease, border-color .18s ease;
+}
+.card::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:2px;
+  background:linear-gradient(90deg,transparent,var(--accent,var(--cyan)),transparent);opacity:.55;
+}
+.card:hover{transform:translateY(-3px);box-shadow:0 20px 54px rgba(0,0,0,.6);border-color:#2a3c57;}
+.card .chead{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:14px 16px;border-bottom:1px solid var(--line-soft);
+}
+.card .chead h3{font-size:13.5px;display:flex;align-items:center;gap:10px;font-weight:600;}
+.card .chead h3 .ic{
+  width:28px;height:28px;border-radius:8px;display:inline-grid;place-items:center;font-size:14px;
+  background:rgba(255,255,255,.04);border:1px solid var(--line-soft);color:var(--accent,var(--cyan));
+}
+.card .cbody{padding:18px;flex:1;min-height:0;}
+.card.flush .cbody{padding:0;}
+
+/* per-card accent colours so the grid isn't four identical boxes */
+.grid-bottom .card:nth-child(1){--accent:var(--cyan);}
+.grid-bottom .card:nth-child(2){--accent:var(--red);}
+.grid-bottom .card:nth-child(3){--accent:#a78bfa;}
+.grid-bottom .card:nth-child(4){--accent:var(--amber);}
+.grid-top .card:nth-child(1){--accent:var(--cyan);}
+.grid-top .card:nth-child(2){--accent:#34d399;}
+
+/* premium card: make it the hero */
+.grid-bottom .card:nth-child(1) .cbody{display:flex;flex-direction:column;justify-content:center;
+  background:radial-gradient(120% 80% at 50% 0%, rgba(45,212,191,.08), transparent 70%);}
+
+/* ---------- Satellite Map View Wrapper ---------- */
+#map{width:100%;height:420px;background:#0b0f19;}
+.map-foot{padding:10px 16px;border-top:1px solid var(--line-soft);font-size:11px;color:var(--muted);font-family:"JetBrains Mono";}
+
+/* ---------- Badges ---------- */
+.badge{padding:6px 12px;border-radius:6px;font-size:11px;font-weight:700;font-family:"JetBrains Mono";letter-spacing:.05em;border:1px solid;}
+.b-CRITICAL{color:var(--red);border-color:var(--red);background:rgba(239,68,68,.12);}
+.b-HIGH{color:var(--orange);border-color:var(--orange);background:rgba(251,146,60,.12);}
+.b-MODERATE{color:var(--amber);border-color:var(--amber);background:rgba(251,191,36,.12);}
+.b-MINIMAL{color:var(--emerald);border-color:var(--emerald);background:rgba(52,211,153,.12);}
+
+/* ---------- Chat Assessment ---------- */
+.chat-card .cbody{display:flex;flex-direction:column;padding:0;}
+.chat-stream{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:12px;height:320px;max-height:320px;}
+.bubble{max-width:90%;padding:11px 13px;font-size:12.5px;line-height:1.5;border-radius:12px;}
+.bubble.ai{align-self:flex-start;background:var(--raised);border:1px solid var(--line-soft);border-bottom-left-radius:2px;}
+.bubble.user{align-self:flex-end;background:linear-gradient(135deg,#115e59,#0f766e);border-bottom-right-radius:2px;color:#fff;}
+.bubble .who{font-family:"JetBrains Mono";font-size:9px;text-transform:uppercase;opacity:.6;margin-bottom:4px;}
+.chat-input{display:flex;gap:8px;padding:12px;border-top:1px solid var(--line-soft);}
+.chat-input input{flex:1;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:10px 12px;color:#fff;outline:none;}
+.btn{cursor:pointer;border:none;border-radius:8px;font-family:"Space Grotesk";font-weight:600;padding:10px 16px;}
+.btn-primary{background:var(--cyan);color:#042f2e;}
+
+/* ---------- Actuarial Metrics Styles ---------- */
+.fin-value{font-size:40px;font-family:"Space Grotesk";font-weight:700;color:var(--cyan);
+  margin-top:6px;line-height:1;letter-spacing:-.02em;text-shadow:0 0 28px rgba(45,212,191,.28);}
+.fin-sub{font-size:11.5px;color:var(--muted);font-family:"JetBrains Mono";margin-top:10px;}
+
+.live .dot{animation:pulse 2s infinite;}
+@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(45,212,191,.5);}70%{box-shadow:0 0 0 7px rgba(45,212,191,0);}100%{box-shadow:0 0 0 0 rgba(45,212,191,0);}}
+
+.gauge-container{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;position:relative;}
+.gauge-val-overlay{position:absolute;top:55%;text-align:center;font-family:"Space Grotesk";font-size:28px;font-weight:700;}
+
+#donut, #bars{width:100%;height:180px;}
+
+.alerts{display:flex;flex-direction:column;gap:8px;max-height:180px;overflow-y:auto;}
+.alert{border-left:3px solid;border-radius:6px;padding:10px;background:rgba(255,255,255,.02);font-size:12px;}
+.alert.crit{border-color:var(--red);background:rgba(239,68,68,0.05);}
+.alert.warn{border-color:var(--amber);background:rgba(251,191,36,0.04);}
+.alert.info{border-color:var(--cyan);background:rgba(45,212,191,0.04);}
+.alert-title{font-weight:600;font-family:"Space Grotesk";margin-bottom:2px;}
+
+@media(max-width:1250px){ .grid-bottom{grid-template-columns:repeat(2,1fr);} }
+@media(max-width:950px){ .shell{grid-template-columns:1fr;} .grid-top{grid-template-columns:1fr;} .tele{display:none;} }
+
+/* ---------- Auth Overlay (Login / Sign up) ---------- */
+.auth-overlay{
+  position:fixed;inset:0;z-index:1000;display:flex;align-items:center;justify-content:center;
+  background:
+    radial-gradient(90% 60% at 50% 0%, rgba(45,212,191,.10), transparent 60%),
+    linear-gradient(180deg, var(--bg-grad), var(--bg));
+  padding:24px;
+}
+.auth-overlay.hidden{display:none;}
+.auth-card{
+  width:100%;max-width:400px;max-height:92vh;overflow-y:auto;
+  background:linear-gradient(180deg,var(--surface),var(--surface-2));
+  border:1px solid var(--line);border-radius:18px;box-shadow:var(--shadow);
+  padding:32px 30px 28px;
+}
+.auth-brand{display:flex;flex-direction:column;align-items:center;text-align:center;gap:10px;margin-bottom:22px;}
+.auth-brand .glyph{
+  width:44px;height:44px;border-radius:12px;
+  background:radial-gradient(circle at 30% 25%, #115e59, #042f2e);
+  border:1px solid var(--cyan);display:grid;place-items:center;
+}
+.auth-brand .name{font-size:20px;font-family:"Space Grotesk";font-weight:700;letter-spacing:-.02em;}
+.auth-brand .name b{color:var(--cyan);}
+.auth-brand .tag{font-size:12.5px;color:var(--muted);}
+
+.auth-view{display:none;flex-direction:column;gap:14px;}
+.auth-view.active{display:flex;}
+
+.social-btn{
+  display:flex;align-items:center;justify-content:center;gap:10px;width:100%;
+  padding:11px 14px;border-radius:10px;border:1px solid var(--line);background:var(--surface);
+  color:var(--text);font-family:"Space Grotesk";font-weight:600;font-size:13px;cursor:pointer;transition:.15s;
+}
+.social-btn:hover{border-color:var(--line);background:var(--raised);}
+.social-btn svg{width:18px;height:18px;flex:none;}
+
+.auth-divider{display:flex;align-items:center;gap:12px;color:var(--faint);font-size:11px;font-family:"JetBrains Mono";letter-spacing:.08em;margin:2px 0;}
+.auth-divider::before,.auth-divider::after{content:'';flex:1;height:1px;background:var(--line-soft);}
+
+.auth-field{display:flex;flex-direction:column;gap:6px;}
+.auth-field label{font-size:10.5px;color:var(--faint);font-family:"JetBrains Mono";letter-spacing:.09em;text-transform:uppercase;}
+.auth-field input{
+  background:var(--surface);border:1px solid var(--line);border-radius:9px;
+  padding:11px 12px;color:var(--text);font-size:13px;outline:none;transition:.15s;
+}
+.auth-field input:focus{border-color:var(--cyan);box-shadow:0 0 0 2px rgba(45,212,191,.15);}
+.auth-row2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+
+.auth-submit{
+  width:100%;padding:12px;border:none;border-radius:10px;cursor:pointer;
+  background:var(--cyan);color:#042f2e;font-family:"Space Grotesk";font-weight:700;font-size:13.5px;
+  transition:.15s;margin-top:2px;
+}
+.auth-submit:hover{filter:brightness(1.08);}
+.auth-error{font-size:11.5px;color:var(--red);display:none;}
+.auth-error.show{display:block;}
+.auth-switch{text-align:center;font-size:12px;color:var(--muted);margin-top:2px;}
+.auth-switch a{color:var(--cyan);cursor:pointer;text-decoration:none;font-weight:600;}
+.auth-switch a:hover{text-decoration:underline;}
+.auth-forgot{text-align:right;font-size:11px;}
+.auth-forgot a{color:var(--muted);cursor:pointer;text-decoration:none;}
+.auth-forgot a:hover{color:var(--cyan);}
+</style>
+</head>
+
+<body>
+
+<div class="auth-overlay" id="auth-overlay">
+  <div class="auth-card">
+    <div class="auth-brand">
+      <div class="glyph">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--cyan)" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+      </div>
+      <div class="name">Fin<b>Geo</b>Risk</div>
+      <div class="tag" id="auth-tagline">Sign in to your actuarial exposure terminal</div>
+    </div>
+
+    <!-- ---------- LOGIN VIEW ---------- -->
+    <div class="auth-view active" id="auth-login-view">
+      <button class="social-btn" id="google-login">
+        <svg viewBox="0 0 48 48"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.9 32.7 29.4 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.9 1.2 8 3.1l5.7-5.7C34.6 6.1 29.6 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.7-.4-3.5z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.6 15.9 18.9 13 24 13c3.1 0 5.9 1.2 8 3.1l5.7-5.7C34.6 6.1 29.6 4 24 4c-7.5 0-13.9 4.2-17.2 10.4l-.5.3z"/><path fill="#4CAF50" d="M24 44c5.4 0 10.3-2.1 14-5.5l-6.4-5.4C29.7 34.6 27 36 24 36c-5.4 0-9.9-3.3-11.4-7.9l-6.6 5C9.9 39.7 16.3 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.7 2-2 3.7-3.7 4.9l6.4 5.4C40.6 35.9 44 30.5 44 24c0-1.3-.1-2.7-.4-3.5z"/></svg>
+        Continue with Google
+      </button>
+      <button class="social-btn" id="apple-login">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M16.365 1.43c0 1.14-.468 2.11-1.35 2.87-.94.82-2.07 1.29-3.13 1.2-.11-1.11.47-2.24 1.32-2.95.87-.75 2.13-1.24 3.16-1.12zM20.3 17.2c-.53 1.22-.78 1.77-1.47 2.85-.96 1.5-2.31 3.37-3.99 3.38-1.5.02-1.88-.98-3.9-.97-2.02.01-2.44 1-3.94.98-1.68-.02-2.96-1.7-3.92-3.2-2.68-4.15-2.96-9.02-1.3-11.6 1.16-1.83 3-2.9 4.72-2.9 1.75 0 2.86 1 4.31 1 1.4 0 2.27-1 4.3-1 1.53 0 3.15.83 4.31 2.27-3.79 2.08-3.18 7.5.58 9.19z"/></svg>
+        Continue with Apple
+      </button>
+      <button class="social-btn" id="microsoft-login">
+        <svg viewBox="0 0 24 24"><rect x="2" y="2" width="9" height="9" fill="#F25022"/><rect x="13" y="2" width="9" height="9" fill="#7FBA00"/><rect x="2" y="13" width="9" height="9" fill="#00A4EF"/><rect x="13" y="13" width="9" height="9" fill="#FFB900"/></svg>
+        Continue with Microsoft
+      </button>
+
+      <div class="auth-divider">OR CONTINUE WITH EMAIL</div>
+
+      <div class="auth-field">
+        <label>Email</label>
+        <input type="email" id="login-email" placeholder="you@company.com">
+      </div>
+      <div class="auth-field">
+        <label>Password</label>
+        <input type="password" id="login-password" placeholder="••••••••">
+        <div class="auth-forgot"><a onclick="showToast('Password reset link sent (demo)','✉️')">Forgot password?</a></div>
+      </div>
+      <div class="auth-error" id="login-error">Please enter a valid email and password.</div>
+      <button class="auth-submit" id="login-submit">Sign In</button>
+
+      <div class="auth-switch">Don't have an account? <a id="go-to-signup">Sign up</a></div>
+    </div>
+
+    <!-- ---------- SIGN UP VIEW ---------- -->
+    <div class="auth-view" id="auth-signup-view">
+      <div class="auth-row2">
+        <div class="auth-field"><label>First name</label><input type="text" id="signup-fname" placeholder="Jane"></div>
+        <div class="auth-field"><label>Last name</label><input type="text" id="signup-lname" placeholder="Doe"></div>
+      </div>
+      <div class="auth-field"><label>Email</label><input type="email" id="signup-email" placeholder="you@company.com"></div>
+      <div class="auth-field"><label>Phone number</label><input type="tel" id="signup-phone" placeholder="+1 (555) 000-0000"></div>
+      <div class="auth-field"><label>Password</label><input type="password" id="signup-password" placeholder="••••••••"></div>
+      <div class="auth-field"><label>Confirm password</label><input type="password" id="signup-password2" placeholder="••••••••"></div>
+      <div class="auth-error" id="signup-error">Please fill out all fields correctly.</div>
+      <button class="auth-submit" id="signup-submit">Create Account</button>
+
+      <div class="auth-switch">Already have an account? <a id="go-to-login">Sign in</a></div>
+    </div>
+  </div>
+</div>
+
+<div class="shell">
+
+  <header class="topbar">
+    <div class="brand">
+      <div class="glyph">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--cyan)" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+      </div>
+      <div>
+        <div class="name">Fin<b>Geo</b>Risk</div>
+        <div class="sub">ACTUARIAL EXPOSURE TERMINAL</div>
+      </div>
+    </div>
+    <div class="topbar-spacer"></div>
+    <div class="tele">
+      <div class="cell"><span class="k">Active Lat/Lon</span><span class="v" id="t-coords">0.0000, 0.0000</span></div>
+    </div>
+    <div class="live"><span id="live-mode" style="font-family:'JetBrains Mono'; font-size:11px; color:var(--cyan);">MODEL ACTIVE</span></div>
+    <div class="topbar-icons">
+      <button class="icon-btn" id="settings-btn" title="Settings" aria-label="Settings">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="3"/>
+          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+        </svg>
+      </button>
+
+      <div class="dropdown" id="settings-dd">
+        <div class="dd-head">
+          <div class="t">Settings</div>
+          <div class="s">FINGEORISK TERMINAL PREFERENCES</div>
+        </div>
+        <div class="dd-body">
+          <div class="dd-row"><span class="lbl">🔔 Live disaster alerts</span><div class="toggle on" data-setting="alerts"></div></div>
+          <div class="dd-row"><span class="lbl">🛰️ Auto-refresh feed (3m)</span><div class="toggle on" data-setting="autorefresh"></div></div>
+          <div class="dd-row"><span class="lbl">📐 Use metric units</span><div class="toggle" data-setting="metric"></div></div>
+          <div class="dd-divider"></div>
+          <button class="dd-item" data-action="api-integrations"><span class="em">🔑</span> API &amp; integrations</button>
+          <button class="dd-item" data-action="language-region"><span class="em">🌐</span> Language &amp; region</button>
+          <button class="dd-item" data-action="help-docs"><span class="em">❓</span> Help &amp; documentation</button>
+          <div class="dd-divider"></div>
+        </div>
+        <div class="dd-section eyebrow">🎨 Change background color</div>
+        <div class="theme-picker">
+          <div class="eyebrow" style="margin-bottom:8px;">THEME PICKER</div>
+          <input type="color" id="bg-color-input" value="#06090e">
+          <div class="theme-swatches" id="theme-swatches">
+            <div class="swatch active" style="background:#06090e" data-bg="#06090e" data-bg2="#090d14" title="Midnight (default)"></div>
+            <div class="swatch" style="background:#1a1f2b" data-bg="#1a1f2b" data-bg2="#12151d" title="Slate"></div>
+            <div class="swatch" style="background:#0a1a2f" data-bg="#0a1a2f" data-bg2="#071120" title="Navy"></div>
+            <div class="swatch" style="background:#241333" data-bg="#241333" data-bg2="#170c22" title="Violet"></div>
+            <div class="swatch" style="background:#062621" data-bg="#062621" data-bg2="#031714" title="Emerald"></div>
+            <div class="swatch" style="background:#2a0f0f" data-bg="#2a0f0f" data-bg2="#1a0808" title="Brick"></div>
+          </div>
+        </div>
+      </div>
+
+      <button class="avatar-btn" id="profile-btn" title="Profile" aria-label="Profile">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 12a5 5 0 1 0 0-10 5 5 0 0 0 0 10zm0 2c-4.42 0-8 2.24-8 5v1a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-1c0-2.76-3.58-5-8-5z"/></svg>
+      </button>
+
+      <div class="dropdown" id="profile-dd" style="width:250px;">
+        <div class="dd-head" style="display:flex;align-items:center;gap:11px;">
+          <div class="avatar-btn" style="cursor:default;">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 12a5 5 0 1 0 0-10 5 5 0 0 0 0 10zm0 2c-4.42 0-8 2.24-8 5v1a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-1c0-2.76-3.58-5-8-5z"/></svg>
+          </div>
+          <div>
+            <div class="t" id="profile-name-display">Actuary Analyst</div>
+            <div class="s" id="profile-email-display">analyst@fingeorisk.io</div>
+          </div>
+        </div>
+        <div class="dd-body">
+          <button class="dd-item" data-action="view-profile"><span class="em">👤</span> View profile</button>
+          <button class="dd-item" data-action="account-preferences"><span class="em">⚙️</span> Account preferences</button>
+          <button class="dd-item" data-action="switch-workspace"><span class="em">🏢</span> Switch workspace</button>
+          <button class="dd-item" data-action="billing-plan"><span class="em">💳</span> Billing &amp; plan</button>
+          <div class="dd-divider"></div>
+          <button class="dd-item" style="color:var(--red);" data-action="sign-out"><span class="em">↪</span> Sign out</button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <aside class="sidebar">
+    <div class="group">
+      <span class="eyebrow">Target Search Locator</span>
+      <div class="search-container">
+        <input type="text" id="address-input" placeholder="Type an address, city, or zip...">
+        <button class="search-btn" id="search-btn">Locate
+      
+        </button>
+      </div>
+    </div>
+
+    <div class="group apikey">
+      <span class="eyebrow">Gemini Underwriting Key</span>
+      <input type="password" id="apikey" placeholder="Paste Gemini API key (optional)">
+    </div>
+
+    <div class="group">
+      <span class="eyebrow">Risk Hotspot Quick-Jump</span>
+      <div class="side-list" id="hotspot-list">
+        <div class="side-empty">Loading global hotspots…</div>
+      </div>
+    </div>
+
+    <div class="group">
+      <span class="eyebrow">Recent Searches</span>
+      <div class="side-list" id="recent-list">
+        <div class="side-empty">Locations you look up will appear here.</div>
+      </div>
+    </div>
+  </aside>
+
+  <main class="main">
+    <div class="page-head">
+      <div>
+        <h1 id="loc-title">Global Target Location</h1>
+        <p>Hyper-local geospatial asset underwriting metrics — valuation balance sheets and economic risk pools.</p>
+      </div>
+      <span class="badge b-MINIMAL" id="risk-badge">MINIMAL</span>
+    </div>
+
+    <div id="risk-summary" style="display:none;margin:0 2px 18px;padding:14px 16px;border:1px solid var(--cyan-dim);
+      border-radius:12px;background:linear-gradient(180deg,rgba(45,212,191,.07),rgba(45,212,191,.02));">
+      <div style="font-family:'JetBrains Mono';font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--cyan);margin-bottom:6px;">
+        ⌁ AI Risk Summary — why this area is at risk</div>
+      <div id="risk-summary-text" style="font-size:13px;line-height:1.6;color:var(--text);"></div>
+    </div>
+
+    <div class="grid-top">
+      <section class="card flush">
+        <div class="chead">
+          <h3><span class="ic">◎</span> Spatial Target Earth Viewer</h3>
+          <span class="eyebrow">AERIAL IMAGERY GRID</span>
+        </div>
+        <div id="map"></div>
+        <div class="map-foot">Click anywhere on the satellite landscape to query hyper-local insurance risk vectors.</div>
+      </section>
+
+      <section class="card chat-card">
+        <div class="chead"><h3><span class="ic">⌁</span> Actuarial Portfolio Advisor</h3></div>
+        <div class="cbody">
+          <div class="chat-stream" id="chat-stream"></div>
+          <div class="chat-input">
+            <input type="text" id="chat-box" placeholder="Ask about Estimated Maximum Loss, yields...">
+            <button class="btn btn-primary" id="chat-send">Send</button>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <div class="grid-bottom">
+      <section class="card">
+        <div class="chead"><h3><span class="ic">💰</span> Target Premium Bracket</h3></div>
+        <div class="cbody">
+          <div class="eyebrow">ANNUAL UNDERWRITING TARGET</div>
+          <div class="fin-value" id="f-premium">$0.00</div>
+          <div class="fin-sub" id="f-tiv">Total Value Insured: $0.00</div>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="chead"><h3><span class="ic">📊</span> Estimated Max Loss (EML)</h3></div>
+        <div class="cbody">
+          <div class="gauge-container">
+            <svg viewBox="0 0 200 120" width="100%">
+              <path d="M20 110 A80 80 0 0 1 180 110" fill="none" stroke="#172233" stroke-width="12" stroke-linecap="round"/>
+              <path id="gauge-arc" d="M20 110 A80 80 0 0 1 180 110" fill="none" stroke="var(--cyan)" stroke-width="12" stroke-linecap="round" stroke-dasharray="251.2" stroke-dashoffset="251.2" style="transition: stroke-dashoffset .5s ease-out;"/>
+            </svg>
+            <div class="gauge-val-overlay" id="f-eml-pct">0%</div>
+          </div>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="chead"><h3><span class="ic">📈</span> Risk Pool Allocation</h3></div>
+        <div class="cbody"><div id="donut"></div></div>
+      </section>
+
+      <section class="card">
+        <div class="chead"><h3><span class="ic">⚠</span> Real-Time Claims Anomalies</h3></div>
+        <div class="cbody"><div class="alerts" id="alerts"></div></div>
+      </section>
+    </div>
+
+    <section class="card">
+      <div class="chead">
+        <h3><span class="ic">▦</span> Risk Vector Breakdown</h3>
+        <span class="eyebrow">FLOOD · HURRICANE · WILDFIRE · INSURANCE</span>
+      </div>
+      <div class="cbody"><div id="bars"></div></div>
+    </section>
+
+    <section class="card" style="margin-top:18px;">
+      <div class="chead">
+        <h3><span class="ic">🛰️</span> Live Global Disaster Monitor</h3>
+        <span class="eyebrow" id="disaster-count">CONNECTING…</span>
+      </div>
+      <div class="cbody">
+        <div id="disaster-feed" style="display:flex;gap:10px;overflow-x:auto;padding-bottom:6px;"></div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<div class="modal-overlay" id="modal-overlay">
+  <div class="modal-box">
+    <div class="modal-head">
+      <div>
+        <div class="modal-title" id="modal-title">Title</div>
+        <div class="modal-sub" id="modal-sub">SUBTITLE</div>
+      </div>
+      <button class="modal-close" id="modal-close">✕</button>
+    </div>
+    <div class="modal-body" id="modal-body"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"><span id="toast-icon">✓</span><span id="toast-text"></span></div>
+
+<script>
+const PLOT_BG='rgba(0,0,0,0)';
+const FONT={family:'JetBrains Mono, monospace',color:'#8596b0',size:11};
+let map, currentMarker, currentCtx=null;
+
+/* ---------- Bootstrap Application ---------- */
+function initApp(){
+  setupMap();
+  setupEvents();
+  // Default look at SF Financial District
+  jumpTo(37.7949, -122.4194, "San Francisco Core Asset");
+  map.on('load', ()=>{ loadHotspots(); loadDisasters(); });
+  setInterval(loadDisasters, 180000); // refresh live feed every 3 min
+}
+
+/* ---------- Setup Free Satellite Map Engine ---------- */
+function setupMap(){
+  map = new maplibregl.Map({
+    container: 'map',
+    style: {
+      version: 8,
+      sources: {
+        'satellite-tiles': {
+          type: 'raster',
+          tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'],
+          tileSize: 256,
+          attribution: 'Tiles &copy; Esri'
+        }
+      },
+      layers: [{
+        id: 'satellite',
+        type: 'raster',
+        source: 'satellite-tiles',
+        minzoom: 0,
+        maxzoom: 19
+      }]
+    },
+    center: [-122.4194, 37.7749],
+    zoom: 13
+  });
+
+  map.addControl(new maplibregl.NavigationControl());
+
+  map.on('click', (e) => {
+    reverseGeocodeAndCompute(e.lngLat.lat, e.lngLat.lng);
+  });
+}
+
+function setupEvents(){
+  $('search-btn').onclick = handleSearch;
+  $('address-input').addEventListener('keydown', e=>{ if(e.key==='Enter') handleSearch(); });
+  
+  // Wire Chat System
+  addBubble('ai', 'Actuarial risk advisor active. Search for an asset address or tap anywhere on the satellite view to run catastrophic balance sheet diagnostics.');
+  $('chat-send').onclick = sendChat;
+  $('chat-box').addEventListener('keydown', e=>{ if(e.key==='Enter') sendChat(); });
+
+  setupTopbarMenus();
+}
+/* ---------- Settings / Profile dropdowns + background theme picker ---------- */
+function setupTopbarMenus(){
+  const settingsBtn = $('settings-btn'), settingsDd = $('settings-dd');
+  const profileBtn = $('profile-btn'), profileDd = $('profile-dd');
+
+  function closeAll(){
+    settingsDd.classList.remove('open'); settingsBtn.classList.remove('active');
+    profileDd.classList.remove('open'); profileBtn.classList.remove('active');
+  }
+
+  settingsBtn.onclick = (e) => {
+    e.stopPropagation();
+    const willOpen = !settingsDd.classList.contains('open');
+    closeAll();
+    if(willOpen){ settingsDd.classList.add('open'); settingsBtn.classList.add('active'); }
+  };
+
+  profileBtn.onclick = (e) => {
+    e.stopPropagation();
+    const willOpen = !profileDd.classList.contains('open');
+    closeAll();
+    if(willOpen){ profileDd.classList.add('open'); profileBtn.classList.add('active'); }
+  };
+
+  document.addEventListener('click', (e) => {
+    if(!settingsDd.contains(e.target) && !profileDd.contains(e.target)) closeAll();
+  });
+
+  document.querySelectorAll('.toggle').forEach(t => {
+    t.onclick = () => t.classList.toggle('on');
+  });
+
+  const swatches = document.querySelectorAll('.swatch');
+  const colorInput = $('bg-color-input');
+
+  function applyBackground(bg, bg2){
+    document.documentElement.style.setProperty('--bg', bg);
+    document.documentElement.style.setProperty('--bg-grad', bg2 || bg);
+  }
+
+  swatches.forEach(sw => {
+    sw.onclick = () => {
+      swatches.forEach(s => s.classList.remove('active'));
+      sw.classList.add('active');
+      applyBackground(sw.dataset.bg, sw.dataset.bg2);
+      colorInput.value = sw.dataset.bg;
+    };
+  });
+
+  colorInput.addEventListener('input', () => {
+    swatches.forEach(s => s.classList.remove('active'));
+    applyBackground(colorInput.value, colorInput.value);
+  });
+
+  document.querySelectorAll('.dd-item[data-action]').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      closeAll();
+      handleAction(btn.dataset.action);
+    });
+  });
+
+  $('modal-close').onclick = closeModal;
+  $('modal-overlay').addEventListener('click', (e) => { if(e.target.id === 'modal-overlay') closeModal(); });
+  document.addEventListener('keydown', (e) => { if(e.key === 'Escape') closeModal(); });
+}
+
+/* ---------- Modal system (used by settings / profile dropdown items) ---------- */
+function openModal(title, sub, bodyHtml){
+  $('modal-title').textContent = title;
+  $('modal-sub').textContent = sub;
+  $('modal-body').innerHTML = bodyHtml;
+  $('modal-overlay').classList.add('open');
+}
+function closeModal(){ $('modal-overlay').classList.remove('open'); }
+
+let toastTimer;
+function showToast(text, icon){
+  $('toast-icon').textContent = icon || '✓';
+  $('toast-text').textContent = text;
+  const t = $('toast');
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 3200);
+}
+
+function handleAction(action){
+  const PERSON_SVG = '<svg viewBox="0 0 24 24" width="46" height="46" fill="#8fa3c4"><path d="M12 12a5 5 0 1 0 0-10 5 5 0 0 0 0 10zm0 2c-4.42 0-8 2.24-8 5v1a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-1c0-2.76-3.58-5-8-5z"/></svg>';
+
+  if(action === 'view-profile'){
+    openModal('View Profile', 'ACCOUNT OVERVIEW', `
+      <div style="display:flex;align-items:center;gap:14px;margin-bottom:16px;">
+        <div style="width:52px;height:52px;border-radius:12px;background:var(--surface);border:1px solid var(--line);display:grid;place-items:center;">${PERSON_SVG}</div>
+        <div>
+          <div style="font-family:'Space Grotesk';font-weight:700;font-size:15px;">${currentUser.name}</div>
+          <div style="font-size:12px;color:var(--faint);font-family:'JetBrains Mono';">${currentUser.email}</div>
+        </div>
+      </div>
+      <div class="modal-row"><span>Role</span><span class="mono" style="color:var(--muted);">Senior Underwriting Analyst</span></div>
+      <div class="modal-row"><span>Terminal ID</span><span class="mono" style="color:var(--muted);">FGR-4471-A</span></div>
+      <div class="modal-row"><span>Member since</span><span class="mono" style="color:var(--muted);">Jan 2026</span></div>
+      <div class="modal-row"><span>Assets reviewed</span><span class="mono" style="color:var(--cyan);">128</span></div>
+      <div class="modal-actions"><button class="btn-ghost" onclick="closeModal()">Close</button></div>
+    `);
+  } else if(action === 'account-preferences'){
+    openModal('Account Preferences', 'UPDATE YOUR DETAILS', `
+      <div class="field"><label>Display name</label><input type="text" value="${currentUser.name}"></div>
+      <div class="field"><label>Email</label><input type="email" value="${currentUser.email}"></div>
+      <div class="field"><label>Time zone</label>
+        <select><option>UTC</option><option>Asia/Kolkata</option><option>America/New_York</option><option>Europe/London</option></select>
+      </div>
+      <div class="modal-actions">
+        <button class="btn-ghost" onclick="closeModal()">Cancel</button>
+        <button class="btn" style="flex:1;background:var(--cyan);color:#042f2e;" onclick="closeModal(); showToast('Preferences saved', '✅')">Save changes</button>
+      </div>
+    `);
+  } else if(action === 'switch-workspace'){
+    openModal('Switch Workspace', 'YOUR ORGANIZATIONS', `
+      <div class="ws-item active"><span class="wdot"></span> FinGeoRisk — Primary Underwriting</div>
+      <div class="ws-item"><span class="wdot"></span> Coastal Re — Catastrophe Desk</div>
+      <div class="ws-item"><span class="wdot"></span> Meridian Capital — Portfolio Risk</div>
+      <div class="modal-actions"><button class="btn-ghost" onclick="closeModal()">Close</button></div>
+    `);
+    document.querySelectorAll('.ws-item').forEach(item => {
+      item.onclick = () => {
+        document.querySelectorAll('.ws-item').forEach(i => i.classList.remove('active'));
+        item.classList.add('active');
+        showToast('Switched workspace', '🏢');
+        closeModal();
+      };
+    });
+  } else if(action === 'billing-plan'){
+    openModal('Billing & Plan', 'SUBSCRIPTION DETAILS', `
+      <div class="plan-card">
+        <div class="tier">Enterprise Underwriting Plan</div>
+        <div style="font-size:11.5px;color:var(--muted);margin-top:4px;">Unlimited asset queries · Live disaster feeds · Gemini AI advisor</div>
+      </div>
+      <div class="modal-row"><span>Next billing date</span><span class="mono" style="color:var(--muted);">Aug 1, 2026</span></div>
+      <div class="modal-row"><span>Seats</span><span class="mono" style="color:var(--muted);">6 / 10 used</span></div>
+      <div class="modal-actions">
+        <button class="btn-ghost" onclick="closeModal()">Close</button>
+        <button class="btn" style="flex:1;background:var(--cyan);color:#042f2e;" onclick="showToast('Opening billing portal…','💳')">Manage billing</button>
+      </div>
+    `);
+  } else if(action === 'sign-out'){
+    openModal('Sign Out', 'CONFIRM ACTION', `
+      <div style="color:var(--muted);margin-bottom:6px;">Are you sure you want to sign out of the FinGeoRisk terminal?</div>
+      <div class="modal-actions">
+        <button class="btn-ghost" onclick="closeModal()">Cancel</button>
+        <button class="btn-danger" onclick="closeModal(); logoutUser();">Sign out</button>
+      </div>
+    `);
+  } else if(action === 'api-integrations'){
+    openModal('API & Integrations', 'CONNECTED SERVICES', `
+      <div class="modal-row"><span>🔑 Gemini Underwriting Key</span><span class="mono" style="color:${$('apikey').value.trim() ? 'var(--cyan)' : 'var(--faint)'};">${$('apikey').value.trim() ? 'Connected' : 'Not set'}</span></div>
+      <div class="modal-row"><span>🛰️ NASA EONET Feed</span><span class="mono" style="color:var(--cyan);">Active</span></div>
+      <div class="modal-row"><span>〰️ USGS Earthquake Feed</span><span class="mono" style="color:var(--cyan);">Active</span></div>
+      <div class="modal-row"><span>🗺️ Esri Satellite Imagery</span><span class="mono" style="color:var(--cyan);">Active</span></div>
+      <div class="modal-actions"><button class="btn-ghost" onclick="closeModal()">Close</button></div>
+    `);
+  } else if(action === 'language-region'){
+    openModal('Language & Region', 'LOCALIZATION', `
+      <div class="field"><label>Language</label><select><option>English (US)</option><option>English (UK)</option><option>Español</option><option>日本語</option></select></div>
+      <div class="field"><label>Region</label><select><option>United States</option><option>India</option><option>European Union</option><option>Asia-Pacific</option></select></div>
+      <div class="field"><label>Currency</label><select><option>USD ($)</option><option>EUR (€)</option><option>GBP (£)</option><option>INR (₹)</option></select></div>
+      <div class="modal-actions">
+        <button class="btn-ghost" onclick="closeModal()">Cancel</button>
+        <button class="btn" style="flex:1;background:var(--cyan);color:#042f2e;" onclick="closeModal(); showToast('Region preferences updated', '🌐')">Apply</button>
+      </div>
+    `);
+  } else if(action === 'help-docs'){
+    openModal('Help & Documentation', 'SUPPORT RESOURCES', `
+      <button class="dd-item" style="border:1px solid var(--line-soft);margin-bottom:6px;" onclick="openHelpArticle('guide')">📘 Getting started guide</button>
+      <button class="dd-item" style="border:1px solid var(--line-soft);margin-bottom:6px;" onclick="openHelpArticle('eml')">📊 Understanding EML &amp; premiums</button>
+      <button class="dd-item" style="border:1px solid var(--line-soft);margin-bottom:6px;" onclick="openHelpArticle('feeds')">🛰️ Disaster feed data sources</button>
+      <button class="dd-item" style="border:1px solid var(--line-soft);" onclick="openHelpArticle('contact')">✉️ Contact support</button>
+      <div class="modal-actions"><button class="btn-ghost" onclick="closeModal()">Close</button></div>
+    `);
+  }
+}
+
+/* ---------- Help & Documentation sub-articles ---------- */
+const HELP_ARTICLES = {
+  guide: {
+    title: 'Getting Started Guide', sub: '📘 DOCUMENTATION',
+    body: `
+      <ol style="margin:0 0 14px;padding-left:18px;line-height:1.9;color:var(--muted);">
+        <li>Search an address, city, or zip in the sidebar locator, or click anywhere on the satellite map.</li>
+        <li>Review the auto-generated AI risk summary and exposure tier badge.</li>
+        <li>Check premium, EML, and risk vector charts for the selected asset.</li>
+        <li>Use Risk Hotspot Quick-Jump or Recent Searches to move between assets fast.</li>
+        <li>Ask the Actuarial Portfolio Advisor chat about EML, yields, or premiums.</li>
+      </ol>`
+  },
+  eml: {
+    title: 'Understanding EML & Premiums', sub: '📊 DOCUMENTATION',
+    body: `
+      <p style="color:var(--muted);line-height:1.7;margin:0 0 12px;">Estimated Maximum Loss (EML) is the modelled percentage of an asset's value that could be destroyed in a worst-case catastrophic event, based on its flood, wind, and wildfire payout probabilities.</p>
+      <p style="color:var(--muted);line-height:1.7;margin:0;">Annual premium is derived from Total Insured Value scaled by a composite risk index — higher-risk locations carry a higher premium loading to cover potential claims.</p>`
+  },
+  feeds: {
+    title: 'Disaster Feed Data Sources', sub: '🛰️ DOCUMENTATION',
+    body: `
+      <div class="modal-row"><span>〰️ Earthquakes</span><span class="mono" style="color:var(--muted);">USGS 2.5-day feed</span></div>
+      <div class="modal-row"><span>🔥🌀🌊🌋 Wildfires, storms, floods, volcanoes</span><span class="mono" style="color:var(--muted);">NASA EONET</span></div>
+      <div class="modal-row"><span>🗺️ Satellite imagery</span><span class="mono" style="color:var(--muted);">Esri World Imagery</span></div>
+      <p style="color:var(--faint);font-size:11.5px;margin-top:10px;">Feeds refresh automatically every 3 minutes while the terminal is open.</p>`
+  },
+  contact: {
+    title: 'Contact Support', sub: '✉️ WE USUALLY REPLY WITHIN 24H',
+    body: () => `
+      <div class="field"><label>Your email</label><input type="email" id="contact-email" value="${currentUser.email}"></div>
+      <div class="field"><label>Message</label><input type="text" id="contact-msg" placeholder="Describe the issue..."></div>
+      <div class="modal-actions">
+        <button class="btn-ghost" onclick="openHelpArticle('_back')">Back</button>
+        <button class="btn" style="flex:1;background:var(--cyan);color:#042f2e;" onclick="closeModal(); showToast('Message sent to support', '✉️')">Send</button>
+      </div>`
+  }
+};
+function openHelpArticle(key){
+  if(key === '_back'){ handleAction('help-docs'); return; }
+  const a = HELP_ARTICLES[key];
+  const bodyHtml = typeof a.body === 'function' ? a.body() : a.body;
+  openModal(a.title, a.sub, bodyHtml + (key === 'contact' ? '' : `
+    <div class="modal-actions"><button class="btn-ghost" onclick="openHelpArticle('_back')">← Back</button></div>`));
+}
+
+/* ---------- Handle Geocoding Search Box Bar ---------- */
+async function handleSearch(){
+  const query = $('address-input').value.trim();
+  if(!query) return;
+  
+  try {
+    const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1`;
+    const res = await (await fetch(url, { headers: { 'User-Agent': 'FinGeoRisk-App' } })).json();
+    if(res && res.length > 0){
+      const match = res[0];
+      jumpTo(parseFloat(match.lat), parseFloat(match.lon), match.display_name);
+    } else {
+      alert("Location target could not be resolved by geospatial index.");
+    }
+  } catch(e) {
+    console.error(e);
+  }
+}
+
+function jumpTo(lat, lon, label){
+  map.flyTo({ center: [lon, lat], zoom: 15 });
+  if(currentMarker) currentMarker.remove();
+  currentMarker = new maplibregl.Marker({ color: '#2dd4bf' }).setLngLat([lon, lat]).addTo(map);
+  computeActuarial(lat, lon, label);
+}
+
+async function reverseGeocodeAndCompute(lat, lon){
+  let label = `Coordinate Cluster (${lat.toFixed(4)}, ${lon.toFixed(4)})`;
+  try {
+    const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`;
+    const res = await (await fetch(url, { headers: { 'User-Agent': 'FinGeoRisk-App' } })).json();
+    if(res && res.display_name) label = res.display_name;
+  } catch(e){}
+  
+  if(currentMarker) currentMarker.remove();
+  currentMarker = new maplibregl.Marker({ color: '#2dd4bf' }).setLngLat([lon, lat]).addTo(map);
+  computeActuarial(lat, lon, label);
+}
+
+/* ---------- Actuarial Computation Dispatcher ---------- */
+async function computeActuarial(lat, lon, name){
+  $('t-coords').textContent = `${lat.toFixed(4)}, ${lon.toFixed(4)}`;
+  
+  const res = await (await fetch('/api/compute', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ lat, lon, name })
+  })).json();
+  
+  renderActuarialMetrics(res);
+  addRecentSearch(res);
+}
+
+/* ---------- Recent Searches (sidebar) ---------- */
+let recentSearches = [];
+function addRecentSearch(data){
+  const entry = { name: data.geography.name.split(',')[0], lat: data.geography.lat, lon: data.geography.lon,
+                   tier: data.tier, color: tierColorClient(data.tier) };
+  recentSearches = recentSearches.filter(r => r.name !== entry.name);
+  recentSearches.unshift(entry);
+  recentSearches = recentSearches.slice(0, 8);
+  renderRecentSearches();
+}
+function tierColorClient(tier){
+  if(tier.includes('CRITICAL')) return '#ef4444';
+  if(tier.includes('HIGH')) return '#fb923c';
+  if(tier.includes('MODERATE')) return '#fbbf24';
+  return '#34d399';
+}
+function renderRecentSearches(){
+  const list = $('recent-list');
+  if(!recentSearches.length){
+    list.innerHTML = '<div class="side-empty">Locations you look up will appear here.</div>';
+    return;
+  }
+  list.innerHTML = recentSearches.map(r => `
+    <div class="side-item" onclick="jumpTo(${r.lat},${r.lon},'${r.name.replace(/'/g, "\\'")}')">
+      <span class="dot" style="background:${r.color};color:${r.color};"></span>
+      <div class="info">
+        <div class="name">${r.name}</div>
+        <div class="meta">${r.tier}</div>
+      </div>
+    </div>`).join('');
+}
+
+const $=id=>document.getElementById(id);
+
+function renderActuarialMetrics(data){
+  currentCtx = data;
+  const fin = data.financials;
+  const vec = data.vectors;
+
+  // Header Title
+  $('loc-title').textContent = data.geography.name.split(',')[0];
+  
+  // Exposure Badge Color Match
+  const badge = $('risk-badge');
+  badge.textContent = data.tier;
+  badge.className = 'badge b-' + data.tier.split(' ')[0];
+
+  // Financial Value Output Formatting
+  $('f-premium').textContent = '$' + fin.annual_premium.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+  $('f-tiv').textContent = 'Total Value Insured: $' + fin.total_insured_value.toLocaleString();
+
+  // EML Radial Gauge Render
+  $('f-eml-pct').textContent = fin.eml_pct + '%';
+  const frac = fin.eml_pct / 100;
+  $('gauge-arc').style.strokeDashoffset = 251.2 * (1 - frac);
+  $('gauge-arc').style.stroke = data.tier.includes('CRITICAL') || data.tier.includes('HIGH') ? 'var(--red)' : 'var(--emerald)';
+
+  // Build Insurance Risk Charts
+  drawDonut(vec);
+  drawBars(data);
+  drawActuarialAlerts(data);
+  renderSummary(data);
+}
+
+/* ---------- AI Risk Summary banner ---------- */
+function renderSummary(data){
+  const box = $('risk-summary');
+  $('risk-summary-text').textContent = data.risk_summary || '';
+  box.style.display = data.risk_summary ? 'block' : 'none';
+}
+
+/* ---------- Financial Donut Slice Chart ---------- */
+function drawDonut(vec){
+  const data = [{
+    type: 'pie', hole: .65,
+    labels: ['Flood Risk', 'Wind Damage', 'Wildfire Pool'],
+    values: [vec.flood_payout_prob, vec.wind_payout_prob, vec.wildfire_payout_prob],
+    marker: { colors: ['#2dd4bf', '#fb923c', '#ef4444'], line: { color: '#0e141f', width: 2 } },
+    textinfo: 'none', hovertemplate: '%{label}: %{value:.1f}%<extra></extra>',
+    sort: false
+  }];
+  const layout = {
+    showlegend: true, legend: { orientation: 'h', y: -.1, font: { color: '#8596b0', size: 10 }, x: .5, xanchor: 'center' },
+    margin: { t: 5, b: 5, l: 5, r: 5 }, paper_bgcolor: PLOT_BG, height: 180,
+    annotations: [{ text: 'HAZARDS', showarrow: false, font: { family: 'JetBrains Mono', size: 9, color: '#53647c' }, y: .5 }]
+  };
+  Plotly.react('donut', data, layout, { displayModeBar: false });
+}
+
+/* ---------- Risk Vector Bar Chart (Flood · Hurricane · Wildfire · Insurance) ---------- */
+function drawBars(data){
+  const vec = data.vectors, fin = data.financials;
+  const labels = ['Flood', 'Hurricane', 'Wildfire', 'Insurance'];
+  // insurance exposure expressed on the same 0-100 scale via EML %
+  const values = [vec.flood_payout_prob, vec.wind_payout_prob, vec.wildfire_payout_prob, fin.eml_pct];
+  const colors = ['#2dd4bf', '#fb923c', '#ef4444', '#a78bfa'];
+
+  const chart = [{
+    type: 'bar', x: labels, y: values,
+    marker: { color: colors }, width: 0.55,
+    text: values.map(v => v.toFixed(0) + '%'), textposition: 'outside',
+    textfont: { family: 'JetBrains Mono', size: 11, color: '#8596b0' },
+    hovertemplate: '%{x}: %{y:.1f}%<extra></extra>'
+  }];
+  const layout = {
+    margin: { t: 24, b: 30, l: 36, r: 16 }, paper_bgcolor: PLOT_BG, plot_bgcolor: PLOT_BG, height: 220,
+    xaxis: { tickfont: { color: '#8596b0', size: 12, family: 'JetBrains Mono' }, showgrid: false },
+    yaxis: { range: [0, 112], tickfont: { color: '#53647c', size: 9 }, gridcolor: '#172233', ticksuffix: '%', zeroline: false },
+    bargap: 0.4
+  };
+  Plotly.react('bars', chart, layout, { displayModeBar: false });
+}
+
+/* ---------- Colour-coded Risk Hotspots ---------- */
+let hotspotMarkers = [];
+async function loadHotspots(){
+  let spots = [];
+  try { spots = await (await fetch('/api/hotspots')).json(); } catch(e){
+    $('hotspot-list').innerHTML = '<div class="side-empty">Hotspot feed unavailable.</div>';
+    return;
+  }
+  spots.forEach(s => {
+    const el = document.createElement('div');
+    el.style.cssText = `width:16px;height:16px;border-radius:50%;background:${s.color};
+      border:2px solid #06090e;box-shadow:0 0 0 2px ${s.color}55,0 0 10px ${s.color};cursor:pointer;`;
+    el.title = `${s.name} — ${s.tier} (index ${s.composite_idx})`;
+    el.addEventListener('click', (ev) => { ev.stopPropagation(); jumpTo(s.lat, s.lon, s.name); });
+    const m = new maplibregl.Marker({ element: el }).setLngLat([s.lon, s.lat]).addTo(map);
+    hotspotMarkers.push(m);
+  });
+  addLegend();
+  renderHotspotList(spots);
+}
+function renderHotspotList(spots){
+  const list = $('hotspot-list');
+  const sorted = [...spots].sort((a, b) => b.composite_idx - a.composite_idx);
+  list.innerHTML = sorted.map((s, i) => `
+    <div class="side-item" onclick="jumpTo(${s.lat},${s.lon},'${s.name.replace(/'/g, "\\'")}')">
+      <span class="idx">${String(i + 1).padStart(2, '0')}</span>
+      <span class="dot" style="background:${s.color};color:${s.color};"></span>
+      <div class="info">
+        <div class="name">${s.name}</div>
+        <div class="meta">${s.tier} · IDX ${s.composite_idx}</div>
+      </div>
+    </div>`).join('');
+}
+function addLegend(){
+  if(document.getElementById('map-legend')) return;
+  const lg = document.createElement('div');
+  lg.id = 'map-legend';
+  lg.style.cssText = `position:absolute;bottom:14px;right:14px;z-index:5;background:rgba(6,9,14,.82);
+    border:1px solid var(--line-soft);border-radius:9px;padding:9px 11px;font-family:'JetBrains Mono';
+    font-size:10px;color:var(--muted);backdrop-filter:blur(6px);line-height:1.7;`;
+  lg.innerHTML = `<div style="color:var(--faint);letter-spacing:.12em;margin-bottom:4px;">RISK HOTSPOTS</div>
+    <div><span style="color:#ef4444">●</span> Critical &nbsp; <span style="color:#fb923c">●</span> High</div>
+    <div><span style="color:#fbbf24">●</span> Moderate &nbsp; <span style="color:#34d399">●</span> Minimal</div>`;
+  map.getContainer().appendChild(lg);
+}
+
+/* ---------- Real-Time Disaster Monitoring (USGS + NASA EONET) ---------- */
+let disasterMarkers = [];
+const DTYPE = {
+  earthquake:{e:'〰️',c:'#a78bfa'}, wildfire:{e:'🔥',c:'#ef4444'}, storm:{e:'🌀',c:'#fb923c'},
+  flood:{e:'🌊',c:'#2dd4bf'}, volcano:{e:'🌋',c:'#f87171'}, ice:{e:'🧊',c:'#93c5fd'},
+  drought:{e:'🏜️',c:'#fbbf24'}, other:{e:'⚠️',c:'#8596b0'}
+};
+async function loadDisasters(){
+  let events = [];
+  try { events = (await (await fetch('/api/disasters')).json()).events || []; }
+  catch(e){ $('disaster-count').textContent = 'FEED OFFLINE'; return; }
+
+  disasterMarkers.forEach(m => m.remove()); disasterMarkers = [];
+  events.forEach(ev => {
+    if(typeof ev.lat !== 'number' || typeof ev.lon !== 'number') return;
+    const d = DTYPE[ev.type] || DTYPE.other;
+    const el = document.createElement('div');
+    el.style.cssText = 'font-size:16px;cursor:pointer;filter:drop-shadow(0 0 4px rgba(0,0,0,.8));';
+    el.textContent = d.e;
+    el.title = `${ev.title} (${ev.source})`;
+    el.addEventListener('click', ev2 => { ev2.stopPropagation(); map.flyTo({ center:[ev.lon, ev.lat], zoom:7 }); });
+    disasterMarkers.push(new maplibregl.Marker({ element: el }).setLngLat([ev.lon, ev.lat]).addTo(map));
+  });
+
+  $('disaster-count').textContent = `${events.length} ACTIVE EVENTS · LIVE`;
+  const feed = $('disaster-feed');
+  if(!events.length){ feed.innerHTML = '<div style="color:var(--faint);font-size:12px;padding:8px;">No active events reported.</div>'; return; }
+  feed.innerHTML = events.slice(0, 30).map(ev => {
+    const d = DTYPE[ev.type] || DTYPE.other;
+    const when = ev.time ? new Date(ev.time).toLocaleDateString() : '';
+    return `<div onclick="map.flyTo({center:[${ev.lon},${ev.lat}],zoom:7})"
+      style="min-width:190px;flex:none;cursor:pointer;border:1px solid var(--line-soft);border-left:3px solid ${d.c};
+      border-radius:9px;padding:10px 12px;background:var(--surface);">
+      <div style="font-size:18px;">${d.e}</div>
+      <div style="font-size:12px;font-weight:600;font-family:'Space Grotesk';margin:4px 0 2px;color:var(--text);
+        white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${ev.title}</div>
+      <div style="font-size:10px;color:var(--faint);font-family:'JetBrains Mono';">${ev.detail||''} · ${when}</div>
+      <div style="font-size:9px;color:var(--cyan);font-family:'JetBrains Mono';margin-top:3px;letter-spacing:.08em;">${ev.source}</div>
+    </div>`;
+  }).join('');
+}
+
+/* ---------- Insurance Loss Runway Alerts ---------- */
+function drawActuarialAlerts(data){
+  const fin = data.financials;
+  const vec = data.vectors;
+  const items = [];
+
+  if(fin.eml_pct > 65) {
+    items.push(['crit', 'High Loss Exposure Flag', `Estimated Maximum Loss passes premium yield boundary limits (${fin.eml_pct}% Cap).`]);
+  } else {
+    items.push(['info', 'Secure Asset Balance', 'Loss run projections sit comfortably inside global risk parameters.']);
+  }
+  
+  if(vec.flood_payout_prob > 50) items.push(['warn', 'Hydrological Premium Surcharge', 'Heightened baseline flood risk forces dynamic premium rate loading adjustments.']);
+  if(vec.wildfire_payout_prob > 50) items.push(['warn', 'Arid Ignition Volatility', 'Wildfire parameters indicate increased asset liability exposure boundaries.']);
+
+  $('alerts').innerHTML = items.map(([cls, title, desc]) => `
+    <div class="alert ${cls}">
+      <div class="alert-title">${cls === 'crit' ? '🔴' : cls === 'warn' ? '🟠' : '🟢'} ${title}</div>
+      <div>${desc}</div>
+    </div>
+  `).join('');
+}
+
+/* ---------- AI Actuarial Underwriter Interaction System ---------- */
+function addBubble(role, text){
+  const stream = $('chat-stream');
+  const b = document.createElement('div');
+  b.className = 'bubble ' + (role === 'ai' ? 'ai' : 'user');
+  b.innerHTML = `<div class="who">${role === 'ai' ? 'FinGeoRisk System' : 'Actuary Analyst'}</div>${text}`;
+  stream.appendChild(b);
+  stream.scrollTop = stream.scrollHeight;
+  return b;
+}
+
+async function sendChat(){
+  const box = $('chat-box');
+  const msg = box.value.trim();
+  if(!msg) return;
+
+  addBubble('user', msg);
+  box.value = '';
+  
+  const btn = $('chat-send');
+  btn.disabled = true;
+  const thinking = addBubble('ai', '<span class="mono" style="color:var(--faint)">Processing portfolio data...</span>');
+
+  try {
+    const res = await (await fetch('/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message: msg, context: currentCtx, api_key: $('apikey').value.trim() })
+    })).json();
+    
+    thinking.innerHTML = `<div class="who">FinGeoRisk System</div>${res.reply.replace(/\n/g, '<br>')}`;
+  } catch(e) {
+    thinking.innerHTML = `<div class="who">FinGeoRisk System</div>Underwriting server cluster unreachable.`;
+  }
+  btn.disabled = false;
+}
+
+// Fire application launch window
+/* =====================================================================
+   AUTH SYSTEM — Login / Sign up / Session
+   Mock client-side auth (no real backend) with localStorage persistence
+   so "accounts" created via Sign Up can then be used to Sign In.
+===================================================================== */
+let currentUser = { name: 'Actuary Analyst', email: 'analyst@fingeorisk.io' };
+
+function getUsers(){
+  try { return JSON.parse(localStorage.getItem('fgr_users') || '[]'); }
+  catch(e){ return []; }
+}
+function saveUsers(list){
+  try { localStorage.setItem('fgr_users', JSON.stringify(list)); } catch(e){}
+}
+function getSession(){
+  try { return JSON.parse(localStorage.getItem('fgr_session') || 'null'); }
+  catch(e){ return null; }
+}
+function setSession(user){
+  try { localStorage.setItem('fgr_session', JSON.stringify(user)); } catch(e){}
+}
+function clearSession(){
+  try { localStorage.removeItem('fgr_session'); } catch(e){}
+}
+
+function initAuth(){
+  const overlay = $('auth-overlay');
+
+  // Already signed in on a previous visit? Skip straight to the app.
+  const existing = getSession();
+  if(existing){
+    currentUser = existing;
+    applyCurrentUser();
+    overlay.classList.add('hidden');
+  }
+
+  $('go-to-signup').onclick = () => switchAuthView('signup');
+  $('go-to-login').onclick = () => switchAuthView('login');
+
+  $('google-login').onclick = () => socialLogin('Google', '#4285F4');
+  $('apple-login').onclick = () => socialLogin('Apple', '#a3a3a3');
+  $('microsoft-login').onclick = () => socialLogin('Microsoft', '#00A4EF');
+
+  $('login-submit').onclick = handleLoginSubmit;
+  $('signup-submit').onclick = handleSignupSubmit;
+
+  [$('login-email'), $('login-password')].forEach(el => el.addEventListener('keydown', e => { if(e.key === 'Enter') handleLoginSubmit(); }));
+}
+
+function switchAuthView(view){
+  $('auth-login-view').classList.toggle('active', view === 'login');
+  $('auth-signup-view').classList.toggle('active', view === 'signup');
+  $('auth-tagline').textContent = view === 'login'
+    ? 'Sign in to your actuarial exposure terminal'
+    : 'Create your actuarial exposure terminal account';
+  $('login-error').classList.remove('show');
+  $('signup-error').classList.remove('show');
+}
+
+function socialLogin(provider, color){
+  const email = provider.toLowerCase() + '.user@' + provider.toLowerCase() + '.com';
+  completeLogin({ name: provider + ' User', email });
+  showToast(`Signed in with ${provider}`, '✅');
+}
+
+function handleLoginSubmit(){
+  const email = $('login-email').value.trim();
+  const pass = $('login-password').value;
+  const err = $('login-error');
+
+  if(!email.includes('@') || pass.length < 1){
+    err.textContent = 'Please enter a valid email and password.';
+    err.classList.add('show');
+    return;
+  }
+  err.classList.remove('show');
+
+  const match = getUsers().find(u => u.email.toLowerCase() === email.toLowerCase());
+  const name = match ? `${match.fname} ${match.lname}` : email.split('@')[0];
+  completeLogin({ name, email });
+  showToast(`Welcome back, ${name.split(' ')[0]}`, '👋');
+}
+
+function handleSignupSubmit(){
+  const fname = $('signup-fname').value.trim();
+  const lname = $('signup-lname').value.trim();
+  const email = $('signup-email').value.trim();
+  const phone = $('signup-phone').value.trim();
+  const pass = $('signup-password').value;
+  const pass2 = $('signup-password2').value;
+  const err = $('signup-error');
+
+  if(!fname || !lname || !email.includes('@') || !phone || pass.length < 4 || pass !== pass2){
+    err.textContent = pass !== pass2 ? 'Passwords do not match.' : 'Please fill out every field correctly (password min. 4 characters).';
+    err.classList.add('show');
+    return;
+  }
+  err.classList.remove('show');
+
+  const users = getUsers();
+  if(users.some(u => u.email.toLowerCase() === email.toLowerCase())){
+    err.textContent = 'An account with this email already exists.';
+    err.classList.add('show');
+    return;
+  }
+  users.push({ fname, lname, email, phone });
+  saveUsers(users);
+
+  // Clear the form, prefill login email, bounce back to the login view
+  ['signup-fname','signup-lname','signup-email','signup-phone','signup-password','signup-password2'].forEach(id => $(id).value = '');
+  $('login-email').value = email;
+  switchAuthView('login');
+  showToast('Account created — please sign in', '🎉');
+}
+
+function completeLogin(user){
+  currentUser = user;
+  setSession(user);
+  applyCurrentUser();
+  $('auth-overlay').classList.add('hidden');
+}
+
+function applyCurrentUser(){
+  $('profile-name-display').textContent = currentUser.name;
+  $('profile-email-display').textContent = currentUser.email;
+  const initial = (currentUser.name || '?').trim().charAt(0).toUpperCase();
+  // keep the profile buttons as icon glyphs; nothing else to update here
+}
+
+function logoutUser(){
+  clearSession();
+  currentUser = { name: 'Actuary Analyst', email: 'analyst@fingeorisk.io' };
+  $('login-email').value = '';
+  $('login-password').value = '';
+  switchAuthView('login');
+  $('auth-overlay').classList.remove('hidden');
+  showToast('Signed out of FinGeoRisk', '↪');
+}
+
+window.onload = () => { initAuth(); initApp(); };
+</script>
+</body>
+</html>
